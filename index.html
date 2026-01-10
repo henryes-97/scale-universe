@@ -12,15 +12,21 @@
 
   <style>
     body {
-      font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: 40px auto;
-      padding: 0 15px;
+      font-family: Arial, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      
+      background-image: url("images/background.jpg");
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
     }
 
     h2 {
       text-align: center;
       margin-bottom: 10px;
+      font-weight: 600;
     }
 
     .subtitle {
@@ -72,16 +78,68 @@
       text-align: right;
       margin-bottom: 15px;
     }
+
+    .lang-btn {
+      font-size: 16px;
+      padding: 6px 10px;
+      margin-left: 6px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+    }
+
+    .lang-btn:hover {
+      background-color: #f0f0f0;
+    }
+
+    .lang-btn.active {
+      background-color: #2c7be5;
+      color: white;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 25px 30px;
+
+      background: rgba(225, 225, 225, 0.92);
+      border-radius: 14px;
+
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+    }
+
+    .flag {
+      width: 22px;
+      height: 16px;
+      margin-right: 6px;
+      vertical-align: middle;
+      border-radius: 2px;
+      box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+    }
+
+    .lang-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
   </style>
 </head>
 
 <body>
 
+<div class="container">
+
 <div class="lang-select">
-  <select id="language" onchange="setLanguage(this.value)">
-    <option value="ca">Català</option>
-    <option value="en">English</option>
-  </select>
+  <button class="lang-btn" onclick="setLanguage('ca')" title="Català">
+    <img src="flags/ca.svg" alt="Català" class="flag">
+    CA
+  </button>
+
+  <button class="lang-btn" onclick="setLanguage('en')" title="English">
+    <img src="flags/gb.svg" alt="English" class="flag">
+    EN
+  </button>
 </div>
 
 <h2 id="title">🌌</h2>
@@ -113,7 +171,7 @@ const texts = {
     errEvent: "Si us plau, introdueix un nom per a l’esdeveniment. Per exemple: Descobriment del foc",
     errAge: "Si us plau, introdueix una edat vàlida. Per exemple: 502026",
     errRange: "Si us plau, introdueix una edat entre 0 i 13.835.000.000 anys.",
-    output: (label, date) => `L’esdeveniment «${label}» va ocórrer el ${date}`,
+    output: (label, date) => `L’esdeveniment «${label}» va ocórrer el ${date} ms`,
     locale: "ca-ES"
   },
   en: {
@@ -127,7 +185,7 @@ const texts = {
     errEvent: "Please enter a name for the event. For example: Discovery of fire",
     errAge: "Please enter a valid age. For example: 502026",
     errRange: "Please enter an age between 0 and 13,835,000,000 years.",
-    output: (label, date) => `The event “${label}” occurred on ${date}`,
+    output: (label, date) => `The event “${label}” occurred on ${date} ms`,
     locale: "en-US"
   }
 };
@@ -151,6 +209,17 @@ function setLanguage(lang) {
   document.getElementById("age").placeholder = t.agePlaceholder;
 
   document.getElementById("output").textContent = "";
+
+  document.querySelectorAll(".lang-btn").forEach(btn => {
+    btn.classList.remove("active");
+  });
+
+  const activeBtn = document.querySelector(
+    `.lang-btn[onclick="setLanguage('${lang}')"]`
+  );
+  if(activeBtn) {
+    activeBtn.classList.add("active");
+  }
 }
 
 /* ⏱️ ESCALAT TEMPORAL (ms) */
@@ -205,5 +274,6 @@ function runScaler() {
 setLanguage("ca");
 </script>
 
+</div>
 </body>
 </html>
