@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <title>Escala la data en la durada de l’univers</title>
+
+  <!-- Icona del navegador -->
+  <link rel="icon" href="data:image/svg+xml,
+    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
+      <text y='0.9em' font-size='90'>🌌</text>
+    </svg>">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 0 15px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      text-align: center;
+      font-size: 0.95em;
+      color: #555;
+      margin-bottom: 25px;
+    }
+
+    label {
+      display: block;
+      margin-top: 15px;
+    }
+
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      font-size: 14px;
+    }
+
+    .button-container {
+      text-align: center;
+      margin-top: 25px;
+    }
+
+    button {
+      padding: 10px 22px;
+      font-size: 16px;
+      background-color: #2c7be5;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #1a5fb4;
+    }
+
+    pre {
+      background: #f4f4f4;
+      padding: 12px;
+      margin-top: 25px;
+      white-space: pre-wrap;
+    }
+
+    .lang-select {
+      text-align: right;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="lang-select">
+  <select id="language" onchange="setLanguage(this.value)">
+    <option value="ca">Català</option>
+    <option value="en">English</option>
+  </select>
+</div>
+
+<h2 id="title">🌌</h2>
+<div class="subtitle" id="subtitle"></div>
+
+<label id="label-event"></label>
+<input type="text" id="label" />
+
+<label id="label-age"></label>
+<input type="number" id="age" />
+
+<div class="button-container">
+  <button onclick="runScaler()" id="button"></button>
+</div>
+
+<pre id="output"></pre>
+
+<script>
+/* 🌍 TEXTOS */
+const texts = {
+  ca: {
+    title: "🌌 Escala un esdeveniment a la durada de l’univers",
+    subtitle: "Una metàfora temporal: tota la història de l’univers comprimida en un any",
+    eventLabel: "Esdeveniment:",
+    eventPlaceholder: "Què vols escalar?",
+    ageLabel: "Edat en anys:",
+    agePlaceholder: "Quina edat té el que vols escalar?",
+    button: "Calcula",
+    errEvent: "Si us plau, introdueix un nom per a l’esdeveniment. Per exemple: Descobriment del foc",
+    errAge: "Si us plau, introdueix una edat vàlida. Per exemple: 502026",
+    errRange: "Si us plau, introdueix una edat entre 0 i 13.835.000.000 anys.",
+    output: (label, date) => `L’esdeveniment «${label}» va ocórrer el ${date}`,
+    locale: "ca-ES"
+  },
+  en: {
+    title: "🌌 Scale an event to the duration of the universe",
+    subtitle: "A temporal metaphor: the entire history of the universe compressed into one year",
+    eventLabel: "Event:",
+    eventPlaceholder: "What do you want to scale?",
+    ageLabel: "Age in years:",
+    agePlaceholder: "How old is the event?",
+    button: "Calculate",
+    errEvent: "Please enter a name for the event. For example: Discovery of fire",
+    errAge: "Please enter a valid age. For example: 502026",
+    errRange: "Please enter an age between 0 and 13,835,000,000 years.",
+    output: (label, date) => `The event “${label}” occurred on ${date}`,
+    locale: "en-US"
+  }
+};
+
+let currentLang = "ca";
+
+/* 🌐 CANVI D’IDIOMA */
+function setLanguage(lang) {
+  currentLang = lang;
+  const t = texts[lang];
+
+  document.documentElement.lang = lang;
+  document.title = t.title;
+  document.getElementById("title").textContent = t.title;
+  document.getElementById("subtitle").textContent = t.subtitle;
+  document.getElementById("label-event").textContent = t.eventLabel;
+  document.getElementById("label-age").textContent = t.ageLabel;
+  document.getElementById("button").textContent = t.button;
+
+  document.getElementById("label").placeholder = t.eventPlaceholder;
+  document.getElementById("age").placeholder = t.agePlaceholder;
+
+  document.getElementById("output").textContent = "";
+}
+
+/* ⏱️ ESCALAT TEMPORAL (ms) */
+function scaleYourAge(x) {
+  const uniage = 13835 * 1e6;
+  const secondsInYear = 365 * 24 * 3600;
+
+  const remainingSeconds = (1 - x / uniage) * secondsInYear;
+
+  const baseDate = new Date(Date.UTC(1970, 0, 1, 0, 0, 0));
+  const scaledDate = new Date(baseDate.getTime() + remainingSeconds * 1000);
+
+  const t = texts[currentLang];
+
+  const day = scaledDate.getUTCDate().toString().padStart(2, "0");
+  const month = scaledDate.toLocaleString(t.locale, {
+    month: "long",
+    timeZone: "UTC"
+  });
+  const hours = scaledDate.getUTCHours().toString().padStart(2, "0");
+  const minutes = scaledDate.getUTCMinutes().toString().padStart(2, "0");
+  const seconds = scaledDate.getUTCSeconds().toString().padStart(2, "0");
+  const millis = scaledDate.getUTCMilliseconds().toString().padStart(3, "0");
+
+  return `${day} ${month} ${hours}:${minutes}:${seconds}.${millis}`;
+}
+
+/* ▶️ EXECUCIÓ */
+function runScaler() {
+  const t = texts[currentLang];
+  const label = document.getElementById("label").value.trim();
+  const age = parseFloat(document.getElementById("age").value);
+
+  if (!label) {
+    document.getElementById("output").textContent = t.errEvent;
+    return;
+  }
+  if (isNaN(age)) {
+    document.getElementById("output").textContent = t.errAge;
+    return;
+  }
+  if (age < 0 || age > 13835e6) {
+    document.getElementById("output").textContent = t.errRange;
+    return;
+  }
+
+  const scaled = scaleYourAge(age);
+  document.getElementById("output").textContent = t.output(label, scaled);
+}
+
+/* Inicialització */
+setLanguage("ca");
+</script>
+
+</body>
+</html>
