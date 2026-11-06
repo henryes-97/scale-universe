@@ -68,11 +68,86 @@
       background-color: #1a5fb4;
     }
 
-    pre {
+    input, select {
+      box-sizing: border-box;
+    }
+
+    .age-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 5px;
+    }
+
+    .age-row input {
+      flex: 1;
+      min-width: 0;
+      margin-top: 0;
+    }
+
+    .age-row select {
+      padding: 8px;
+      font-size: 14px;
+      max-width: 50%;
+    }
+
+    .age-preview {
+      min-height: 1.2em;
+      margin-top: 4px;
+      font-size: 0.85em;
+      color: #555;
+    }
+
+    .presets {
+      margin-bottom: 10px;
+    }
+
+    .presets-title {
+      display: block;
+      font-size: 0.9em;
+      color: #444;
+      margin-bottom: 6px;
+    }
+
+    .preset-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .preset-btn {
+      padding: 5px 10px;
+      font-size: 13px;
+      background: white;
+      color: #1a5fb4;
+      border: 1px solid #9bbbe8;
+      border-radius: 14px;
+    }
+
+    .preset-btn:hover {
+      background: #e8f0fc;
+    }
+
+    #output {
+      display: block;
       background: #f4f4f4;
       padding: 12px;
       margin-top: 25px;
-      white-space: pre-wrap;
+      border-radius: 6px;
+      line-height: 1.5;
+    }
+
+    #output:empty {
+      display: none;
+    }
+
+    #output.error {
+      color: #a4161a;
+    }
+
+    .result-detail {
+      display: block;
+      margin-top: 6px;
+      color: #444;
     }
 
     .lang-select {
@@ -87,6 +162,7 @@
       border: 1px solid #ccc;
       border-radius: 6px;
       background: white;
+      color: #222;
       cursor: pointer;
     }
 
@@ -166,110 +242,252 @@
 <h2 id="title">🌌</h2>
 <div class="subtitle" id="subtitle"></div>
 
-<label id="label-event"></label>
-<input type="text" id="label" />
-
-<label id="label-age"></label>
-<input type="number" id="age" />
-
-<div class="button-container">
-  <button onclick="runScaler()" id="button"></button>
+<div class="presets">
+  <span class="presets-title" id="presets-title"></span>
+  <div class="preset-list" id="preset-list"></div>
 </div>
 
-<pre id="output"></pre>
+<form id="scaler-form" novalidate>
+  <label for="label" id="label-event"></label>
+  <input type="text" id="label" autocomplete="off" />
+
+  <label for="age" id="label-age"></label>
+  <div class="age-row">
+    <input type="number" id="age" min="0" step="any" inputmode="decimal" />
+    <select id="unit" aria-labelledby="label-age"></select>
+  </div>
+  <div class="age-preview" id="age-preview" aria-live="polite"></div>
+
+  <div class="button-container">
+    <button type="submit" id="button"></button>
+  </div>
+</form>
+
+<output id="output" for="label age unit" aria-live="polite"></output>
 
 <script>
 /* 🌌 EDAT DE L’UNIVERS (anys) — única font de veritat */
 const UNIVERSE_AGE = 13.835e9;
+
+/* Unitats d’edat: valor introduït × multiplicador = anys */
+const UNITS = [
+  { key: "years",     factor: 1 },
+  { key: "thousands", factor: 1e3 },
+  { key: "millions",  factor: 1e6 },
+  { key: "billions",  factor: 1e9 }
+];
+
+/* Exemples predefinits (edats aproximades) */
+const PRESETS = [
+  { key: "earth",     value: 4.54, unit: "billions" },
+  { key: "life",      value: 3.7,  unit: "billions" },
+  { key: "dinosaurs", value: 66,   unit: "millions" },
+  { key: "fire",      value: 1,    unit: "millions" },
+  { key: "sapiens",   value: 300,  unit: "thousands" },
+  { key: "pyramids",  value: 4500, unit: "years" }
+];
 
 /* 🌍 TEXTOS */
 const texts = {
   ca: {
     title: "🌌 Escala un esdeveniment a la durada de l’univers",
     subtitle: "Una metàfora temporal: tota la història de l’univers comprimida en un any",
+    presetsTitle: "Exemples:",
+    presets: {
+      earth: "Formació de la Terra",
+      life: "Primera vida a la Terra",
+      dinosaurs: "Extinció dels dinosaures",
+      fire: "Descobriment del foc",
+      sapiens: "Primers Homo sapiens",
+      pyramids: "Piràmides de Gizeh"
+    },
     eventLabel: "Esdeveniment:",
     eventPlaceholder: "Què vols escalar?",
-    ageLabel: "Edat en anys:",
-    agePlaceholder: "Quina edat té el que vols escalar?",
+    ageLabel: "Fa quant de temps va passar?",
+    agePlaceholder: "Per exemple: 66",
+    units: {
+      years: "anys",
+      thousands: "milers d’anys",
+      millions: "milions d’anys",
+      billions: "milers de milions d’anys"
+    },
+    agePreview: years => `= ${years} anys`,
     button: "Calcula",
     errEvent: "Si us plau, introdueix un nom per a l’esdeveniment. Per exemple: Descobriment del foc",
-    errAge: "Si us plau, introdueix una edat vàlida. Per exemple: 1000000 (descobriment del foc)",
+    errAge: "Si us plau, introdueix una edat vàlida. Per exemple: 1 milió d’anys (descobriment del foc)",
     errRange: max => `Si us plau, introdueix una edat entre 0 i ${max} anys.`,
     output: (label, date) => `L’esdeveniment «${label}» va ocórrer el ${date}`,
+    now: "És el moment present: just a mitjanit del 31 de desembre.",
+    bigBang: "És el Big Bang: el primer instant de l’any.",
+    before: amount => `Això és ${amount} abans de mitjanit del 31 de desembre (el present).`,
     locale: "ca-ES"
   },
   en: {
     title: "🌌 Scale an event to the duration of the universe",
     subtitle: "A temporal metaphor: the entire history of the universe compressed into one year",
+    presetsTitle: "Examples:",
+    presets: {
+      earth: "Formation of the Earth",
+      life: "First life on Earth",
+      dinosaurs: "Extinction of the dinosaurs",
+      fire: "Discovery of fire",
+      sapiens: "First Homo sapiens",
+      pyramids: "Pyramids of Giza"
+    },
     eventLabel: "Event:",
     eventPlaceholder: "What do you want to scale?",
-    ageLabel: "Age in years:",
-    agePlaceholder: "How old is the event?",
+    ageLabel: "How long ago did it happen?",
+    agePlaceholder: "For example: 66",
+    units: {
+      years: "years",
+      thousands: "thousand years",
+      millions: "million years",
+      billions: "billion years"
+    },
+    agePreview: years => `= ${years} years`,
     button: "Calculate",
     errEvent: "Please enter a name for the event. For example: Discovery of fire",
-    errAge: "Please enter a valid age. For example: 1000000 (discovery of fire)",
+    errAge: "Please enter a valid age. For example: 1 million years (discovery of fire)",
     errRange: max => `Please enter an age between 0 and ${max} years.`,
     output: (label, date) => `The event “${label}” occurred on ${date}`,
-    locale: "en-US"
+    now: "That is the present moment: exactly midnight on 31 December.",
+    bigBang: "That is the Big Bang: the very first instant of the year.",
+    before: amount => `That is ${amount} before midnight on 31 December (the present).`,
+    locale: "en-GB"
   }
 };
 
+const MS_IN_YEAR = 365 * 24 * 3600 * 1000;
+const LANG_STORAGE_KEY = "scale-universe-lang";
+
 let currentLang = "ca";
+let activePreset = null; // exemple triat, per traduir-ne el nom en canviar d’idioma
+
+const $ = id => document.getElementById(id);
+
+/* 💾 Preferència d’idioma (pot fallar en mode privat) */
+function loadSavedLanguage() {
+  try {
+    const saved = localStorage.getItem(LANG_STORAGE_KEY);
+    if (saved && texts[saved]) return saved;
+  } catch (e) { /* sense emmagatzematge */ }
+  return null;
+}
+
+function saveLanguage(lang) {
+  try { localStorage.setItem(LANG_STORAGE_KEY, lang); } catch (e) { /* ignorat */ }
+}
+
+function detectBrowserLanguage() {
+  const langs = navigator.languages || [navigator.language || ""];
+  for (const l of langs) {
+    const code = l.toLowerCase().slice(0, 2);
+    if (texts[code]) return code;
+  }
+  return "ca";
+}
 
 /* 🌐 CANVI D’IDIOMA */
-function setLanguage(lang) {
+function setLanguage(lang, { remember = true } = {}) {
   currentLang = lang;
+  if (remember) saveLanguage(lang);
   const t = texts[lang];
 
   document.documentElement.lang = lang;
   document.title = t.title;
-  document.getElementById("title").textContent = t.title;
-  document.getElementById("subtitle").textContent = t.subtitle;
-  document.getElementById("label-event").textContent = t.eventLabel;
-  document.getElementById("label-age").textContent = t.ageLabel;
-  document.getElementById("button").textContent = t.button;
+  $("title").textContent = t.title;
+  $("subtitle").textContent = t.subtitle;
+  $("presets-title").textContent = t.presetsTitle;
+  $("label-event").textContent = t.eventLabel;
+  $("label-age").textContent = t.ageLabel;
+  $("button").textContent = t.button;
 
-  document.getElementById("label").placeholder = t.eventPlaceholder;
-  document.getElementById("age").placeholder = t.agePlaceholder;
+  if (activePreset) $("label").value = t.presets[activePreset];
+  $("label").placeholder = t.eventPlaceholder;
+  $("age").placeholder = t.agePlaceholder;
 
-  document.getElementById("output").textContent = "";
+  // Selector d’unitats (es conserva la unitat triada)
+  const unitSelect = $("unit");
+  const selectedUnit = unitSelect.value || "years";
+  unitSelect.innerHTML = "";
+  UNITS.forEach(u => unitSelect.add(new Option(t.units[u.key], u.key)));
+  unitSelect.value = selectedUnit;
 
-  document.querySelectorAll(".lang-btn").forEach(btn => {
-    btn.classList.remove("active");
+  // Botons d’exemples
+  const list = $("preset-list");
+  list.innerHTML = "";
+  PRESETS.forEach(p => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "preset-btn";
+    btn.textContent = t.presets[p.key];
+    btn.addEventListener("click", () => applyPreset(p));
+    list.appendChild(btn);
   });
 
-  const activeBtn = document.querySelector(
-    `.lang-btn[onclick="setLanguage('${lang}')"]`
-  );
-  if(activeBtn) {
-    activeBtn.classList.add("active");
-  }
+  document.querySelectorAll(".lang-btn").forEach(btn => {
+    const active = btn.getAttribute("onclick") === `setLanguage('${lang}')`;
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-pressed", active);
+  });
+
+  updateAgePreview();
+
+  // Si ja hi havia un resultat, es torna a mostrar en el nou idioma
+  if ($("output").textContent) runScaler();
 }
 
-/* ⏱️ ESCALAT TEMPORAL (ms) */
-/* El Big Bang és l’1 de gener a les 00:00:00.000 i el present és
+/* Edat total en anys a partir del valor i la unitat */
+function getAgeInYears() {
+  const raw = $("age").value.trim();
+  if (raw === "") return NaN;
+  const value = parseFloat(raw);
+  const unit = UNITS.find(u => u.key === $("unit").value) || UNITS[0];
+  return value * unit.factor;
+}
+
+function updateAgePreview() {
+  const t = texts[currentLang];
+  const years = getAgeInYears();
+  const showPreview = !isNaN(years) && $("unit").value !== "years";
+  $("age-preview").textContent = showPreview
+    ? t.agePreview(years.toLocaleString(t.locale, { maximumFractionDigits: 0 }))
+    : "";
+}
+
+function applyPreset(p) {
+  const t = texts[currentLang];
+  activePreset = p.key;
+  $("label").value = t.presets[p.key];
+  $("age").value = p.value;
+  $("unit").value = p.unit;
+  updateAgePreview();
+  runScaler();
+}
+
+/* ⏱️ ESCALAT TEMPORAL
+   El Big Bang és l’1 de gener a les 00:00:00.000 i el present és
    el 31 de desembre a les 24:00:00.000 (final de l’any). */
 function scaleYourAge(x) {
-  const msInYear = 365 * 24 * 3600 * 1000;
-
   // Mil·lisegons transcorreguts des del Big Bang dins l’any escalat
-  const elapsedMs = Math.floor((1 - x / UNIVERSE_AGE) * msInYear);
-  const isNow = elapsedMs >= msInYear;
+  const elapsedMs = Math.floor((1 - x / UNIVERSE_AGE) * MS_IN_YEAR);
+  const isNow = elapsedMs >= MS_IN_YEAR;
 
   // L’any 1970 (UTC, no de traspàs) serveix de calendari de referència
-  const scaledDate = new Date(isNow ? msInYear - 1 : elapsedMs);
+  const scaledDate = new Date(isNow ? MS_IN_YEAR - 1 : elapsedMs);
 
   const t = texts[currentLang];
   const pad = (n, len = 2) => n.toString().padStart(len, "0");
 
-  const day = pad(scaledDate.getUTCDate());
-  const month = scaledDate.toLocaleString(t.locale, {
+  // Dia i mes en el format de l’idioma (p. ex. «03 d’abril», «03 April»)
+  const dayMonth = new Intl.DateTimeFormat(t.locale, {
+    day: "2-digit",
     month: "long",
     timeZone: "UTC"
-  });
+  }).format(scaledDate);
 
   if (isNow) {
-    return `${day} ${month} 24:00:00.000`;
+    return `${dayMonth} 24:00:00.000`;
   }
 
   const hours = pad(scaledDate.getUTCHours());
@@ -277,35 +495,85 @@ function scaleYourAge(x) {
   const seconds = pad(scaledDate.getUTCSeconds());
   const millis = pad(scaledDate.getUTCMilliseconds(), 3);
 
-  return `${day} ${month} ${hours}:${minutes}:${seconds}.${millis}`;
+  return `${dayMonth} ${hours}:${minutes}:${seconds}.${millis}`;
+}
+
+/* Quant de temps abans del present, en la unitat més entenedora */
+function describeTimeBeforeNow(x) {
+  const t = texts[currentLang];
+  if (x === 0) return t.now;
+  if (x >= UNIVERSE_AGE) return t.bigBang;
+
+  const remainingSeconds = (x / UNIVERSE_AGE) * MS_IN_YEAR / 1000;
+  let unit, amount;
+  if (remainingSeconds < 60) {
+    unit = "second"; amount = remainingSeconds;
+  } else if (remainingSeconds < 3600) {
+    unit = "minute"; amount = remainingSeconds / 60;
+  } else if (remainingSeconds < 86400) {
+    unit = "hour"; amount = remainingSeconds / 3600;
+  } else {
+    unit = "day"; amount = remainingSeconds / 86400;
+  }
+
+  const formatted = new Intl.NumberFormat(t.locale, {
+    style: "unit",
+    unit,
+    unitDisplay: "long",
+    maximumSignificantDigits: 3
+  }).format(amount);
+
+  return t.before(formatted);
 }
 
 /* ▶️ EXECUCIÓ */
 function runScaler() {
   const t = texts[currentLang];
-  const label = document.getElementById("label").value.trim();
-  const age = parseFloat(document.getElementById("age").value);
+  const output = $("output");
+  const label = $("label").value.trim();
+  const age = getAgeInYears();
+
+  output.classList.add("error");
 
   if (!label) {
-    document.getElementById("output").textContent = t.errEvent;
+    output.textContent = t.errEvent;
     return;
   }
   if (isNaN(age)) {
-    document.getElementById("output").textContent = t.errAge;
+    output.textContent = t.errAge;
     return;
   }
   if (age < 0 || age > UNIVERSE_AGE) {
     const max = UNIVERSE_AGE.toLocaleString(t.locale);
-    document.getElementById("output").textContent = t.errRange(max);
+    output.textContent = t.errRange(max);
     return;
   }
 
-  const scaled = scaleYourAge(age);
-  document.getElementById("output").textContent = t.output(label, scaled);
+  output.classList.remove("error");
+  output.textContent = "";
+
+  const result = document.createElement("strong");
+  result.textContent = t.output(label, scaleYourAge(age));
+  const detail = document.createElement("span");
+  detail.className = "result-detail";
+  detail.textContent = describeTimeBeforeNow(age);
+
+  output.append(result, detail);
 }
 
 /* Inicialització */
-setLanguage("ca");
+$("scaler-form").addEventListener("submit", e => {
+  e.preventDefault();
+  runScaler();
+});
+// Si l’usuari edita els camps, ja no és l’exemple predefinit
+const clearPreset = () => { activePreset = null; };
+$("label").addEventListener("input", clearPreset);
+$("age").addEventListener("input", () => { clearPreset(); updateAgePreview(); });
+$("unit").addEventListener("change", () => { clearPreset(); updateAgePreview(); });
+
+const savedLang = loadSavedLanguage();
+setLanguage(savedLang || detectBrowserLanguage(), { remember: false });
 </script>
 
 </div>
