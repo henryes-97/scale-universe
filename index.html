@@ -179,6 +179,9 @@
 <pre id="output"></pre>
 
 <script>
+/* 🌌 EDAT DE L’UNIVERS (anys) — única font de veritat */
+const UNIVERSE_AGE = 13.835e9;
+
 /* 🌍 TEXTOS */
 const texts = {
   ca: {
@@ -190,9 +193,9 @@ const texts = {
     agePlaceholder: "Quina edat té el que vols escalar?",
     button: "Calcula",
     errEvent: "Si us plau, introdueix un nom per a l’esdeveniment. Per exemple: Descobriment del foc",
-    errAge: "Si us plau, introdueix una edat vàlida. Per exemple: 502026",
-    errRange: "Si us plau, introdueix una edat entre 0 i 13.835.000.000 anys.",
-    output: (label, date) => `L’esdeveniment «${label}» va ocórrer el ${date} ms`,
+    errAge: "Si us plau, introdueix una edat vàlida. Per exemple: 1000000 (descobriment del foc)",
+    errRange: max => `Si us plau, introdueix una edat entre 0 i ${max} anys.`,
+    output: (label, date) => `L’esdeveniment «${label}» va ocórrer el ${date}`,
     locale: "ca-ES"
   },
   en: {
@@ -204,9 +207,9 @@ const texts = {
     agePlaceholder: "How old is the event?",
     button: "Calculate",
     errEvent: "Please enter a name for the event. For example: Discovery of fire",
-    errAge: "Please enter a valid age. For example: 502026",
-    errRange: "Please enter an age between 0 and 13,835,000,000 years.",
-    output: (label, date) => `The event “${label}” occurred on ${date} ms`,
+    errAge: "Please enter a valid age. For example: 1000000 (discovery of fire)",
+    errRange: max => `Please enter an age between 0 and ${max} years.`,
+    output: (label, date) => `The event “${label}” occurred on ${date}`,
     locale: "en-US"
   }
 };
@@ -244,26 +247,35 @@ function setLanguage(lang) {
 }
 
 /* ⏱️ ESCALAT TEMPORAL (ms) */
+/* El Big Bang és l’1 de gener a les 00:00:00.000 i el present és
+   el 31 de desembre a les 24:00:00.000 (final de l’any). */
 function scaleYourAge(x) {
-  const uniage = 13835 * 1e6;
-  const secondsInYear = 365 * 24 * 3600;
+  const msInYear = 365 * 24 * 3600 * 1000;
 
-  const remainingSeconds = (1 - x / uniage) * secondsInYear;
+  // Mil·lisegons transcorreguts des del Big Bang dins l’any escalat
+  const elapsedMs = Math.floor((1 - x / UNIVERSE_AGE) * msInYear);
+  const isNow = elapsedMs >= msInYear;
 
-  const baseDate = new Date(Date.UTC(1970, 0, 1, 0, 0, 0));
-  const scaledDate = new Date(baseDate.getTime() + remainingSeconds * 1000);
+  // L’any 1970 (UTC, no de traspàs) serveix de calendari de referència
+  const scaledDate = new Date(isNow ? msInYear - 1 : elapsedMs);
 
   const t = texts[currentLang];
+  const pad = (n, len = 2) => n.toString().padStart(len, "0");
 
-  const day = scaledDate.getUTCDate().toString().padStart(2, "0");
+  const day = pad(scaledDate.getUTCDate());
   const month = scaledDate.toLocaleString(t.locale, {
     month: "long",
     timeZone: "UTC"
   });
-  const hours = scaledDate.getUTCHours().toString().padStart(2, "0");
-  const minutes = scaledDate.getUTCMinutes().toString().padStart(2, "0");
-  const seconds = scaledDate.getUTCSeconds().toString().padStart(2, "0");
-  const millis = scaledDate.getUTCMilliseconds().toString().padStart(3, "0");
+
+  if (isNow) {
+    return `${day} ${month} 24:00:00.000`;
+  }
+
+  const hours = pad(scaledDate.getUTCHours());
+  const minutes = pad(scaledDate.getUTCMinutes());
+  const seconds = pad(scaledDate.getUTCSeconds());
+  const millis = pad(scaledDate.getUTCMilliseconds(), 3);
 
   return `${day} ${month} ${hours}:${minutes}:${seconds}.${millis}`;
 }
@@ -282,8 +294,9 @@ function runScaler() {
     document.getElementById("output").textContent = t.errAge;
     return;
   }
-  if (age < 0 || age > 13835e6) {
-    document.getElementById("output").textContent = t.errRange;
+  if (age < 0 || age > UNIVERSE_AGE) {
+    const max = UNIVERSE_AGE.toLocaleString(t.locale);
+    document.getElementById("output").textContent = t.errRange(max);
     return;
   }
 
